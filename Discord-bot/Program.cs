@@ -1,7 +1,9 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using DiscordBotRegistrar;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Win32;
 using Newtonsoft.Json;
 
 namespace DiscordBot
@@ -10,8 +12,9 @@ namespace DiscordBot
     {
         private readonly DiscordSocketClient client;
         private readonly string token;
-        private IConfiguration config;
-        
+        private readonly IConfiguration config;
+        private SlashCommandRegistrar registrar;
+
         public Program()
         {
             this.client = new DiscordSocketClient();
@@ -28,10 +31,12 @@ namespace DiscordBot
 
         public async Task StartBotAsync()
         {
-            this.client.Ready += Client_Ready;
+            registrar = new SlashCommandRegistrar(client);
+
+            this.client.Ready += ClientReady;
+            this.client.SlashCommandExecuted += registrar.SlashCommandHandler;
             this.client.Log += LogFuncAsync;
-            this.client.SlashCommandExecuted += SlashCommandHandler;
-            
+
             await this.client.LoginAsync(TokenType.Bot, token);
             await this.client.StartAsync();
             await Task.Delay(-1);
@@ -39,19 +44,9 @@ namespace DiscordBot
             async Task LogFuncAsync(LogMessage message) =>
                 Console.Write(message.ToString());
         }
-
-        public async Task Client_Ready()
+        private async Task ClientReady()
         {
-            var globalCommand = new SlashCommandBuilder();
-            globalCommand.WithName("what-is-your-duty");
-            globalCommand.WithDescription("Send information about bot Duty");
-
-            await client.CreateGlobalApplicationCommandAsync(globalCommand.Build());
-        }
-
-        private async Task SlashCommandHandler(SocketSlashCommand command)
-        {
-            await command.RespondAsync($"To serve {command.User.GlobalName}s Will.");
+            await registrar.SlashCommandsRegister();
         }
     }
 }
