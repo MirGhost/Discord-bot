@@ -63,7 +63,7 @@ namespace DiscorBotMusicService
         [SlashCommand("play", "Play music in voice channel")]
         public async Task PlayAsync([Summary("query", "YouTube link or search term")] string searchQuery)
         {
-            await DeferAsync(); // дає більше часу для відповіді (Discord timeout 3 секунди)
+            await DeferAsync(); // longer timeout 
 
             var voiceState = Context.User as IVoiceState;
             if (voiceState?.VoiceChannel == null)
@@ -120,7 +120,7 @@ namespace DiscorBotMusicService
         [SlashCommand("pause", "I can pause the track")]
         public async Task PauseAsync()
         {
-            await DeferAsync(); // дає більше часу для відповіді (Discord timeout 3 секунди)
+            await DeferAsync(); 
 
             var voiceChannel = Context.Guild.CurrentUser.VoiceChannel;
             var player = await lavaNode.TryGetPlayerAsync(Context.Guild.Id);
@@ -144,7 +144,7 @@ namespace DiscorBotMusicService
         [SlashCommand("resume", "I can resume playing the track")]
         public async Task ResumeAsync()
         {
-            await DeferAsync(); // дає більше часу для відповіді (Discord timeout 3 секунди)
+            await DeferAsync(); 
 
             var voiceChannel = Context.Guild.CurrentUser.VoiceChannel;
             var player = await lavaNode.TryGetPlayerAsync(Context.Guild.Id);
