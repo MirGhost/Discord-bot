@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
@@ -8,26 +9,12 @@ using System.Threading.Tasks;
 
 namespace DiscordBotRegistrar
 {
-    public class SlashCommandRegistrar
+    public class SlashCommandRegistrar : InteractionModuleBase<SocketInteractionContext>
     {
-        private readonly DiscordSocketClient client;
-
-        public SlashCommandRegistrar(DiscordSocketClient client)
+        [SlashCommand("what-is-your-duty", "Send information about bot Duty")]
+        public async Task DutyCommand()
         {
-            this.client = client;
-        }
-        public async Task SlashCommandsRegister()
-        {
-            var globalCommand = new SlashCommandBuilder();
-            globalCommand.WithName("what-is-your-duty");
-            globalCommand.WithDescription("Send information about bot Duty");
-
-            await client.CreateGlobalApplicationCommandAsync(globalCommand.Build());
-        }
-
-        public async Task SlashCommandHandler(SocketSlashCommand command)
-        {
-            await command.RespondAsync($"To serve {command.User.GlobalName}s Will.");
+            await RespondAsync($"To serve {Context.User.GlobalName}s Will.");
         }
     }
 }

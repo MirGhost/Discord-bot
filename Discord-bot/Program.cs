@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Victoria;
 using Microsoft.Extensions.Logging;
 using DiscorBotLogService;
+using DiscorBotMusicService;
+using Victoria.Enums;
 
 namespace DiscordBot
 {
@@ -17,13 +19,12 @@ namespace DiscordBot
         private readonly string token;
         private readonly IConfiguration config;
         private static IServiceProvider services;
-        private SlashCommandRegistrar registrar;
 
         public Program()
         {
             this.client = new DiscordSocketClient(new DiscordSocketConfig
             {
-                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildVoiceStates
+                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildVoiceStates | GatewayIntents.GuildMessages
             });
 
             config = new ConfigurationBuilder()
@@ -39,13 +40,29 @@ namespace DiscordBot
         public async Task StartBotAsync()
         {
             SetServices();
-            registrar = new SlashCommandRegistrar(client);
             var logService = services.GetRequiredService<LogService>();
+            var interactionService = services.GetRequiredService<InteractionService>();
+            var lavaNode = services.GetRequiredService<LavaNode<LavaPlayer<LavaTrack>, LavaTrack>>();
 
             this.client.Ready += ClientReady;
-            this.client.SlashCommandExecuted += registrar.SlashCommandHandler;
-            this.client.Log += logService.LogFuncAsync;
+            
+            client.InteractionCreated += async interaction =>
+            {
+                var ctx = new SocketInteractionContext(client, interaction); // вилучення контексту для подальшого використання 
+                await interactionService.ExecuteCommandAsync(ctx, services); // очікування на виконання команд
+            };
 
+            lavaNode.OnTrackEnd += async arg =>
+            {
+                if (arg.Reason == TrackEndReason.Finished)
+                {
+                    var musicService = services.GetRequiredService<MusicService>();
+                    await musicService.NextTrackAsync(arg);
+                }
+            };
+
+            this.client.Log += logService.LogFuncAsync;
+            
             await this.client.LoginAsync(TokenType.Bot, token);
             await this.client.StartAsync();
             await Task.Delay(-1);
@@ -57,6 +74,12 @@ namespace DiscordBot
                 .AddSingleton(this.config)
                 .AddSingleton(this.client)
                 .AddSingleton(new CommandService())
+                .AddSingleton<DiscordBotChannelRegistry.Registry>()
+                .AddSingleton<InteractionService>(provider => // додання до колекції сервіса бота InteractionService для подальшої взаємодії
+                {
+                    var client = provider.GetRequiredService<DiscordSocketClient>(); //встановлення клієнта через DI
+                    return new InteractionService(client);
+                })
                 .AddSingleton<DiscorBotLogService.LogService>()
                 .AddSingleton<DiscorBotMusicService.MusicService>()
                 .AddLogging(builder => builder.AddConsole())
@@ -75,7 +98,7 @@ namespace DiscordBot
 
                     var logger = provider.GetRequiredService<ILogger<LavaNode<LavaPlayer<LavaTrack>, LavaTrack>>>();
 
-                    return new LavaNode(discord, lavaConfig, logger);
+                    return new LavaNode<LavaPlayer<LavaTrack>, LavaTrack>(discord, lavaConfig, logger);
                 });
 
             services = collection.BuildServiceProvider();
@@ -83,10 +106,13 @@ namespace DiscordBot
 
         private async Task ClientReady()
         {
-            await registrar.SlashCommandsRegister();
+            var interactionService = services.GetRequiredService<InteractionService>(); //отримання з колекції сервіса бота InteractionService
+            await interactionService.AddModulesAsync(typeof(Program).Assembly, services); //пошук всіх класів для вилучиння і реєстрації команд
+
+            await interactionService.RegisterCommandsGloballyAsync();
 
             // Дістаємо Lavalink Node з DI контейнера
-            var lavaNode = services.GetRequiredService<LavaNode>();
+            var lavaNode = services.GetRequiredService<LavaNode<LavaPlayer<LavaTrack>, LavaTrack>>();
             var logService = services.GetRequiredService<LogService>();
 
             // Перевірка підключення
