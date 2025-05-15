@@ -31,7 +31,7 @@ namespace DiscordBot
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-            token = config["Token"]; //my token for bot
+            token = config["Token"]; // token for bot
         }
 
         static void Main(string[] commands) =>
@@ -48,8 +48,8 @@ namespace DiscordBot
             
             client.InteractionCreated += async interaction =>
             {
-                var ctx = new SocketInteractionContext(client, interaction); // вилучення контексту для подальшого використання 
-                await interactionService.ExecuteCommandAsync(ctx, services); // очікування на виконання команд
+                var ctx = new SocketInteractionContext(client, interaction); // context for interactions  
+                await interactionService.ExecuteCommandAsync(ctx, services); // waiting for commands
             };
 
             lavaNode.OnTrackEnd += async arg =>
@@ -70,14 +70,14 @@ namespace DiscordBot
 
         private void SetServices()
         {
-            var collection = new ServiceCollection()
+            var collection = new ServiceCollection() //my services
                 .AddSingleton(this.config)
                 .AddSingleton(this.client)
                 .AddSingleton(new CommandService())
                 .AddSingleton<DiscordBotChannelRegistry.Registry>()
-                .AddSingleton<InteractionService>(provider => // додання до колекції сервіса бота InteractionService для подальшої взаємодії
+                .AddSingleton<InteractionService>(provider => 
                 {
-                    var client = provider.GetRequiredService<DiscordSocketClient>(); //встановлення клієнта через DI
+                    var client = provider.GetRequiredService<DiscordSocketClient>(); 
                     return new InteractionService(client);
                 })
                 .AddSingleton<DiscorBotLogService.LogService>()
@@ -106,16 +106,16 @@ namespace DiscordBot
 
         private async Task ClientReady()
         {
-            var interactionService = services.GetRequiredService<InteractionService>(); //отримання з колекції сервіса бота InteractionService
-            await interactionService.AddModulesAsync(typeof(Program).Assembly, services); //пошук всіх класів для вилучиння і реєстрації команд
+            var interactionService = services.GetRequiredService<InteractionService>(); // getting the InteractionService bot from the collection
+            await interactionService.AddModulesAsync(typeof(Program).Assembly, services); // search all classes for commands registration
 
             await interactionService.RegisterCommandsGloballyAsync();
 
-            // Дістаємо Lavalink Node з DI контейнера
+            // Lavalink Node from DI
             var lavaNode = services.GetRequiredService<LavaNode<LavaPlayer<LavaTrack>, LavaTrack>>();
             var logService = services.GetRequiredService<LogService>();
 
-            // Перевірка підключення
+            // connection check
             if (!lavaNode.IsConnected)
             {
                 try
